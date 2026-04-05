@@ -1,0 +1,34 @@
+{
+  "name": "deepfinance",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DeepFinance - Complete Financial Management Module for Deep-Stack",
+  "workspaces": [
+    "packages/shared",
+    "packages/backend",
+    "packages/frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev --workspace=packages/backend",
+    "dev:frontend": "npm run dev --workspace=packages/frontend",
+    "build": "npm run build --workspace=packages/shared && npm run build --workspace=packages/backend && npm run build --workspace=packages/frontend",
+    "build:backend": "npm run build --workspace=packages/backend",
+    "build:frontend": "npm run build --workspace=packages/frontend",
+    "test": "npm run test --workspace=packages/backend",
+    "lint": "npm run lint --workspaces --if-present",
+    "db:migrate": "npm run migration:run --workspace=packages/backend",
+    "db:migrate:generate": "npm run migration:generate --workspace=packages/backend",
+    "db:migrate:revert": "npm run migration:revert --workspace=packages/backend",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
