@@ -29,7 +29,7 @@ export class JournalLine {
   accountId: string;
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description: string | null;
 
   @Column({ type: 'decimal', precision: 15, scale: 2, default: 0 })
   debit: number;
@@ -41,7 +41,7 @@ export class JournalLine {
   currency: string;
 
   @Column({ name: 'exchange_rate', type: 'decimal', precision: 12, scale: 6, nullable: true })
-  exchangeRate: number;
+  exchangeRate: number | null;
 
   @Column({ name: 'base_currency_debit', type: 'decimal', precision: 15, scale: 2, default: 0 })
   baseCurrencyDebit: number;
@@ -50,17 +50,17 @@ export class JournalLine {
   baseCurrencyCredit: number;
 
   @Column({ name: 'tax_rate_id', type: 'uuid', nullable: true })
-  taxRateId: string;
+  taxRateId: string | null;
 
   @Column({ name: 'tax_amount', type: 'decimal', precision: 15, scale: 2, nullable: true })
-  taxAmount: number;
+  taxAmount: number | null;
 
   // Dimensional tags stored as JSONB for flexibility
   // Format: { "DEPARTMENT": "uuid", "PROJECT": "uuid", "COST_CENTRE": "uuid" }
   @Column({ type: 'jsonb', nullable: true })
-  dimensions: Record<string, string>;
+  dimensions: Record<string, string> | null;
 
   // DEEP module extension metadata
   @Column({ name: 'custom_fields', type: 'jsonb', nullable: true })
-  customFields: Record<string, unknown>;
+  customFields: Record<string, unknown> | null;
 }
