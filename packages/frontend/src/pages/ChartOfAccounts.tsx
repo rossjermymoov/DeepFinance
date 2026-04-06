@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import React, { useEffect, useState, useMemo, useCallback } from 'react'
 import {
   Plus,
   Search,
@@ -13,6 +13,8 @@ import {
   Unlock,
   Archive,
   ArchiveRestore,
+  List,
+  FolderTree,
 } from 'lucide-react'
 import { Card, CardContent } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
@@ -34,6 +36,7 @@ import SeedTemplateModal from '../components/accounts/SeedTemplateModal'
 type SortField = 'code' | 'name' | 'type' | 'normalBalance'
 type SortDir = 'asc' | 'desc'
 type AccountTypeFilter = string | 'ALL'
+type ViewMode = 'flat' | 'grouped'
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   ASSET: 'Asset',
@@ -80,6 +83,7 @@ export default function ChartOfAccounts() {
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [actionMenuId, setActionMenuId] = useState<string | null>(null)
   const [showSeedModal, setShowSeedModal] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('grouped')
 
   const loadAccounts = useCallback(async () => {
     try {
@@ -162,6 +166,52 @@ export default function ChartOfAccounts() {
 
     return result
   }, [accounts, search, typeFilter, sortField, sortDir, showInactive])
+
+  // Grouped view: accounts grouped by type, children indented under parents
+  const groupedAccounts = useMemo(() => {
+    if (viewMode !== 'grouped') return null
+
+    const typeOrder = ['ASSET', 'LIABILITY', 'EQUITY', 'INCOME', 'EXPENSE']
+    const groups: { type: string; label: string; accounts: (Account & { depth: number })[] }[] = []
+
+    for (const type of typeOrder) {
+      const typeAccounts = filteredAccounts.filter((a) => a.type === type)
+      if (typeAccounts.length === 0) continue
+
+      // Build parent-child tree
+      const roots = typeAccounts.filter((a) => !a.parentAccountId)
+      const children = typeAccounts.filter((a) => a.parentAccountId)
+
+      const flatList: (Account & { depth: number })[] = []
+      function addWithChildren(account: Account, depth: number) {
+        flatList.push({ ...account, depth })
+        const kids = children.filter((c) => c.parentAccountId === account.id)
+        kids.sort((a, b) => a.code.localeCompare(b.code))
+        for (const kid of kids) {
+          addWithChildren(kid, depth + 1)
+        }
+      }
+      roots.sort((a, b) => a.code.localeCompare(b.code))
+      for (const root of roots) {
+        addWithChildren(root, 0)
+      }
+      // Also add orphan children (parent not in filtered set)
+      const addedIds = new Set(flatList.map((a) => a.id))
+      for (const child of children) {
+        if (!addedIds.has(child.id)) {
+          flatList.push({ ...child, depth: 1 })
+        }
+      }
+
+      groups.push({
+        type,
+        label: ACCOUNT_TYPE_LABELS[type] || type,
+        accounts: flatList,
+      })
+    }
+
+    return groups
+  }, [filteredAccounts, viewMode])
 
   function toggleSort(field: SortField) {
     if (sortField === field) {
@@ -322,7 +372,26 @@ export default function ChartOfAccounts() {
           {showInactive ? 'Showing inactive' : 'Show inactive'}
         </Button>
 
-        <span className="text-sm text-muted-foreground ml-auto">
+        <div className="flex items-center gap-1 ml-auto mr-3 border border-border rounded-md p-0.5">
+          <Button
+            variant={viewMode === 'grouped' ? 'secondary' : 'ghost'}
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setViewMode('grouped')}
+          >
+            <FolderTree className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant={viewMode === 'flat' ? 'secondary' : 'ghost'}
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setViewMode('flat')}
+          >
+            <List className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        <span className="text-sm text-muted-foreground">
           {filteredAccounts.length} of {accounts.length} accounts
         </span>
       </div>
@@ -359,6 +428,90 @@ export default function ChartOfAccounts() {
                     )}
                   </TableCell>
                 </TableRow>
+              ) : viewMode === 'grouped' && groupedAccounts ? (
+                groupedAccounts.map((group) => (
+                  <React.Fragment key={group.type}>
+                    {/* Group header row */}
+                    <TableRow className="bg-secondary/30 hover:bg-secondary/40">
+                      <TableCell colSpan={7} className="py-2">
+                        <div className="flex items-center gap-2">
+                          <AccountTypeBadge type={group.type} />
+                          <span className="text-sm font-medium">{group.label}</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({group.accounts.length})
+                          </span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {group.accounts.map((account) => (
+                      <TableRow
+                        key={account.id}
+                        className={cn(
+                          'cursor-pointer hover:bg-secondary/50 transition-colors',
+                          !account.isActive && 'opacity-50'
+                        )}
+                      >
+                        <TableCell className="font-mono text-sm font-medium">
+                          <span style={{ paddingLeft: `${account.depth * 20}px` }}>
+                            {account.depth > 0 && (
+                              <span className="text-muted-foreground/40 mr-1">└</span>
+                            )}
+                            {account.code}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{account.name}</p>
+                            {account.description && (
+                              <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[300px]">
+                                {account.description}
+                              </p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <AccountTypeBadge type={account.type} />
+                        </TableCell>
+                        <TableCell>
+                          <span className={cn('text-xs font-medium', account.normalBalance === 'DEBIT' ? 'text-blue-400' : 'text-purple-400')}>
+                            {account.normalBalance}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{account.currency}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            {account.isActive ? <Badge variant="success">Active</Badge> : <Badge variant="error">Archived</Badge>}
+                            {account.isLocked && <span title="Locked"><Lock className="h-3.5 w-3.5 text-amber-400" /></span>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="relative">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setActionMenuId(actionMenuId === account.id ? null : account.id) }}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                            {actionMenuId === account.id && (
+                              <div className="absolute right-0 top-full mt-1 z-20 w-48 bg-card border border-border rounded-md shadow-lg py-1">
+                                <button className="w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors flex items-center gap-2" onClick={(e) => { e.stopPropagation(); setEditingAccount(account); setActionMenuId(null) }}>
+                                  <Pencil className="h-3.5 w-3.5" /> Edit
+                                </button>
+                                {!account.isSystemAccount && (
+                                  <>
+                                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors flex items-center gap-2" onClick={(e) => { e.stopPropagation(); handleToggleLock(account) }}>
+                                      {account.isLocked ? <><Unlock className="h-3.5 w-3.5" /> Unlock</> : <><Lock className="h-3.5 w-3.5" /> Lock</>}
+                                    </button>
+                                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors flex items-center gap-2" onClick={(e) => { e.stopPropagation(); handleToggleActive(account) }}>
+                                      {account.isActive ? <><Archive className="h-3.5 w-3.5 text-orange-400" /><span className="text-orange-400">Archive</span></> : <><ArchiveRestore className="h-3.5 w-3.5 text-green-400" /><span className="text-green-400">Restore</span></>}
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </React.Fragment>
+                ))
               ) : (
                 filteredAccounts.map((account) => (
                   <TableRow
