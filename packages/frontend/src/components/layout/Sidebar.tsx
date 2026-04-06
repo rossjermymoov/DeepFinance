@@ -42,9 +42,9 @@ const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: 'Transactions',
     items: [
-      { label: 'Contacts', path: '/contacts', icon: Users, disabled: true },
-      { label: 'Invoices', path: '/invoices', icon: Receipt, disabled: true },
-      { label: 'Bills', path: '/bills', icon: CreditCard, disabled: true },
+      { label: 'Contacts', path: '/contacts', icon: Users },
+      { label: 'Invoices', path: '/invoices', icon: Receipt },
+      { label: 'Bills', path: '/bills', icon: CreditCard },
       { label: 'Banking', path: '/banking', icon: Landmark, disabled: true },
     ],
   },
@@ -52,7 +52,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: 'Compliance',
     items: [
       { label: 'VAT Returns', path: '/vat', icon: Calculator, disabled: true },
-      { label: 'Reports', path: '/reports', icon: BarChart3, disabled: true },
+      { label: 'Reports', path: '/reports', icon: BarChart3 },
     ],
   },
 ]

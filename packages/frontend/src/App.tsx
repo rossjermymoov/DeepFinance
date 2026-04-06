@@ -3,6 +3,11 @@ import AppLayout from './components/layout/AppLayout'
 import Dashboard from './pages/Dashboard'
 import ChartOfAccounts from './pages/ChartOfAccounts'
 import JournalEntries from './pages/JournalEntries'
+import FinancialPeriods from './pages/FinancialPeriods'
+import Reports from './pages/Reports'
+import Contacts from './pages/Contacts'
+import Invoices from './pages/Invoices'
+import Bills from './pages/Bills'
 
 export default function App() {
   return (
@@ -11,7 +16,11 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/accounts" element={<ChartOfAccounts />} />
         <Route path="/journals" element={<JournalEntries />} />
-        <Route path="/periods" element={<Placeholder title="Financial Periods" />} />
+        <Route path="/periods" element={<FinancialPeriods />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/contacts" element={<Contacts />} />
+        <Route path="/invoices" element={<Invoices />} />
+        <Route path="/bills" element={<Bills />} />
         <Route path="/settings" element={<Placeholder title="Settings" />} />
         <Route path="*" element={<Placeholder title="Page Not Found" />} />
       </Route>

@@ -87,6 +87,10 @@ export interface FinancialPeriod {
   startDate: string
   endDate: string
   status: 'OPEN' | 'CLOSED' | 'LOCKED'
+  financialYear?: number
+  periodNumber?: number
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface DashboardStats {
@@ -95,4 +99,99 @@ export interface DashboardStats {
   draftJournals: number
   postedJournals: number
   currentPeriod: FinancialPeriod | null
+}
+
+export interface Contact {
+  id: string
+  name: string
+  contactType: 'CUSTOMER' | 'SUPPLIER' | 'BOTH'
+  email: string | null
+  phone: string | null
+  companyName: string | null
+  taxNumber: string | null
+  accountNumber: string | null
+  defaultPaymentTermsDays: number
+  billingAddress: {
+    line1: string
+    line2?: string
+    city: string
+    county?: string
+    postcode: string
+    country: string
+  } | null
+  currency: string
+  isActive: boolean
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface InvoiceLine {
+  id: string
+  description: string
+  accountId: string
+  quantity: number
+  unitPrice: number
+  taxAmount: number
+  lineTotal: number
+}
+
+export interface Invoice {
+  id: string
+  invoiceNumber: string
+  contactId: string
+  contact?: Contact
+  issueDate: string
+  dueDate: string
+  status: 'DRAFT' | 'SENT' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'VOID'
+  currency: string
+  subtotal: number
+  taxTotal: number
+  total: number
+  amountPaid: number
+  reference: string | null
+  notes: string | null
+  lines: InvoiceLine[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BillLine {
+  id: string
+  description: string
+  accountId: string
+  quantity: number
+  unitPrice: number
+  taxAmount: number
+  lineTotal: number
+}
+
+export interface Bill {
+  id: string
+  billNumber: string
+  contactId: string
+  contact?: Contact
+  issueDate: string
+  dueDate: string
+  status: 'DRAFT' | 'APPROVED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'VOID'
+  currency: string
+  subtotal: number
+  taxTotal: number
+  total: number
+  amountPaid: number
+  reference: string | null
+  notes: string | null
+  lines: BillLine[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TrialBalanceRow {
+  accountId: string
+  accountCode: string
+  accountName: string
+  accountType: string
+  totalDebit: number
+  totalCredit: number
+  balance: number
 }
