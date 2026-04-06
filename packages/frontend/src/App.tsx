@@ -1,41 +1,30 @@
 import { Routes, Route } from 'react-router-dom'
-import './App.css'
+import AppLayout from './components/layout/AppLayout'
+import Dashboard from './pages/Dashboard'
+import ChartOfAccounts from './pages/ChartOfAccounts'
 
 export default function App() {
   return (
-    <div className="app-container">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <h1 className="brand">
-            Deep<span className="accent">Finance</span>
-          </h1>
-        </div>
-        <nav className="sidebar-nav">
-          {/* Navigation items will be added here */}
-        </nav>
-      </aside>
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/accounts" element={<ChartOfAccounts />} />
+        <Route path="/journals" element={<Placeholder title="Journal Entries" />} />
+        <Route path="/periods" element={<Placeholder title="Financial Periods" />} />
+        <Route path="/settings" element={<Placeholder title="Settings" />} />
+        <Route path="*" element={<Placeholder title="Page Not Found" />} />
+      </Route>
+    </Routes>
+  )
+}
 
-      <main className="main-content">
-        <header className="app-header">
-          <h1>
-            Deep<span className="accent">Finance</span>
-          </h1>
-        </header>
-
-        <div className="content-wrapper">
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <div className="placeholder">
-                  <p>Welcome to DeepFinance</p>
-                  <p>Routes will be configured here</p>
-                </div>
-              }
-            />
-          </Routes>
-        </div>
-      </main>
+function Placeholder({ title }: { title: string }) {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="text-center">
+        <h2 className="text-xl font-bold">{title}</h2>
+        <p className="text-muted-foreground mt-2">This page is coming soon.</p>
+      </div>
     </div>
   )
 }
