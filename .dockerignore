@@ -1,0 +1,12 @@
+node_modules
+packages/*/node_modules
+packages/*/dist
+packages/frontend
+.git
+*.md
+.env
+.env.*
+docker-compose.yml
+docker/
+coverage/
+.vscode/

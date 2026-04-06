@@ -2,10 +2,20 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { FinancialPeriod } from './financial-period.entity';
+
+/**
+ * Result of period validation for posting.
+ * Warnings are returned (not thrown) so the caller can surface them to the user.
+ */
+export interface PeriodValidationResult {
+  allowed: boolean;
+  warnings: string[];
+}
 
 @Injectable()
 export class PeriodsService {
@@ -43,18 +53,44 @@ export class PeriodsService {
 
   /**
    * Check if a period allows posting.
+   *
+   * Rules:
+   *   OPEN   → allowed, no warnings
+   *   CLOSED → always rejected (must reopen first)
+   *   LOCKED → rejected for standard users;
+   *            admins CAN post but receive a warning
+   *
+   * @param period   The financial period to validate
+   * @param isAdmin  Whether the requesting user has admin privileges
+   * @returns        PeriodValidationResult with allowed flag and any warnings
+   * @throws         BadRequestException if posting is not permitted
+   * @throws         ForbiddenException  if a non-admin tries to post to a locked period
    */
-  validatePeriodForPosting(period: FinancialPeriod): void {
-    if (period.status === 'LOCKED') {
-      throw new BadRequestException(
-        `Financial period ${period.name} is locked. No journals can be posted to a locked period.`,
-      );
-    }
+  validatePeriodForPosting(
+    period: FinancialPeriod,
+    isAdmin: boolean = false,
+  ): PeriodValidationResult {
+    const warnings: string[] = [];
+
     if (period.status === 'CLOSED') {
       throw new BadRequestException(
         `Financial period ${period.name} is closed. Reopen the period before posting.`,
       );
     }
+
+    if (period.status === 'LOCKED') {
+      if (!isAdmin) {
+        throw new ForbiddenException(
+          `Financial period ${period.name} is locked. Only administrators can post to a locked period.`,
+        );
+      }
+      // Admin override — allow but warn
+      warnings.push(
+        `WARNING: Financial period ${period.name} is LOCKED. This journal is being posted under admin override. Locked periods should only receive corrections or audit adjustments.`,
+      );
+    }
+
+    return { allowed: true, warnings };
   }
 
   async findAll(tenantId: string, entityId: string): Promise<FinancialPeriod[]> {

@@ -64,6 +64,25 @@ export class Journal extends EntityScopedBase {
   @Column({ name: 'reverses_journal_id', type: 'uuid', nullable: true })
   reversesJournalId: string;
 
+  // ── Amendment tracking ──────────────────────────────────────
+  // When an admin amends a posted journal:
+  //   Original: isAmended=true, amendedByJournalId → new journal, status=AMENDED (red)
+  //   New:      amendsJournalId → original, type=AMENDMENT
+
+  @Column({ name: 'is_amended', default: false })
+  isAmended: boolean;
+
+  @Column({ name: 'amended_by_journal_id', type: 'uuid', nullable: true })
+  amendedByJournalId: string | null;
+
+  @Column({ name: 'amends_journal_id', type: 'uuid', nullable: true })
+  amendsJournalId: string | null;
+
+  @Column({ name: 'amendment_reason', type: 'text', nullable: true })
+  amendmentReason: string | null;
+
+  // ── Posting metadata ────────────────────────────────────────
+
   @Column({ name: 'posted_at', type: 'timestamp', nullable: true })
   postedAt: Date;
 

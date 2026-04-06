@@ -45,6 +45,7 @@ export enum JournalStatus {
   DRAFT = 'DRAFT',
   POSTED = 'POSTED',
   REVERSED = 'REVERSED',
+  AMENDED = 'AMENDED',       // Admin-corrected — original is superseded (red)
 }
 
 /** Journal types */
@@ -53,7 +54,8 @@ export enum JournalType {
   RECURRING = 'RECURRING',
   REVERSING = 'REVERSING',
   ADJUSTMENT = 'ADJUSTMENT',
-  SYSTEM = 'SYSTEM',         // Auto-generated (e.g., from invoice posting)
+  AMENDMENT = 'AMENDMENT',     // Admin correction replacing an amended journal
+  SYSTEM = 'SYSTEM',           // Auto-generated (e.g., from invoice posting)
   INTERCOMPANY = 'INTERCOMPANY',
   YEAR_END = 'YEAR_END',
 }

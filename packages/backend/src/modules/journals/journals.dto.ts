@@ -93,6 +93,13 @@ export class PostJournalDto {
   @IsOptional()
   @IsDateString()
   postingDate?: string;
+
+  @ApiPropertyOptional({
+    description: 'Admin override — allows posting to a locked period. Requires admin role. A warning will be returned in the response.',
+    default: false,
+  })
+  @IsOptional()
+  adminOverride?: boolean;
 }
 
 export class ReverseJournalDto {
@@ -107,8 +114,59 @@ export class ReverseJournalDto {
   reason?: string;
 }
 
+export class AmendJournalDto {
+  @ApiProperty({
+    description: 'Reason for the amendment — required for audit trail',
+    example: 'Incorrect VAT rate applied to supplier invoice',
+  })
+  @IsString()
+  @MaxLength(500)
+  reason: string;
+
+  @ApiPropertyOptional({
+    description: 'New journal date (defaults to original journal date)',
+    example: '2026-04-05',
+  })
+  @IsOptional()
+  @IsDateString()
+  date?: string;
+
+  @ApiPropertyOptional({ description: 'New description (defaults to original)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  description?: string;
+
+  @ApiPropertyOptional({ description: 'New reference (defaults to original)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  reference?: string;
+
+  @ApiPropertyOptional({ description: 'New currency (defaults to original)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(3)
+  currency?: string;
+
+  @ApiPropertyOptional({ description: 'New exchange rate (defaults to original)' })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 6 })
+  exchangeRate?: number;
+
+  @ApiProperty({
+    description: 'Corrected journal lines (minimum 2). Replaces ALL lines from the original.',
+    type: [CreateJournalLineDto],
+  })
+  @IsArray()
+  @ArrayMinSize(2, { message: 'An amended journal must have at least 2 lines' })
+  @ValidateNested({ each: true })
+  @Type(() => CreateJournalLineDto)
+  lines: CreateJournalLineDto[];
+}
+
 export class JournalQueryDto {
-  @ApiPropertyOptional({ description: 'Filter by status (DRAFT, POSTED, REVERSED)' })
+  @ApiPropertyOptional({ description: 'Filter by status (DRAFT, POSTED, REVERSED, AMENDED)' })
   @IsOptional()
   @IsString()
   status?: string;

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { JournalsService } from './journals.service';
 import { Journal } from './journal.entity';
 import { JournalLine } from './journal-line.entity';
@@ -93,7 +93,7 @@ function createMockAccountRepo() {
 function createMockPeriodsService() {
   return {
     findPeriodForDate: jest.fn().mockResolvedValue(mockPeriod),
-    validatePeriodForPosting: jest.fn(),
+    validatePeriodForPosting: jest.fn().mockReturnValue({ allowed: true, warnings: [] }),
   };
 }
 
@@ -333,29 +333,31 @@ describe('JournalsService', () => {
   // ================================================================
 
   describe('Journal posting', () => {
-    it('should post a DRAFT journal', async () => {
-      const draftJournal = {
-        id: 'journal-1',
-        tenantId: TENANT_ID,
-        entityId: ENTITY_ID,
-        journalNumber: 'JNL-000001',
-        date: '2026-04-05',
-        status: JournalStatus.DRAFT,
-        totalDebit: 1000,
-        totalCredit: 1000,
-        lines: [
-          { debit: 1000, credit: 0, accountId: ACCOUNT_RENT },
-          { debit: 0, credit: 1000, accountId: ACCOUNT_BANK },
-        ],
-      };
+    const draftJournal = {
+      id: 'journal-1',
+      tenantId: TENANT_ID,
+      entityId: ENTITY_ID,
+      journalNumber: 'JNL-000001',
+      date: '2026-04-05',
+      status: JournalStatus.DRAFT,
+      totalDebit: 1000,
+      totalCredit: 1000,
+      lines: [
+        { debit: 1000, credit: 0, accountId: ACCOUNT_RENT },
+        { debit: 0, credit: 1000, accountId: ACCOUNT_BANK },
+      ],
+    };
 
-      journalRepo.findOne.mockResolvedValue(draftJournal);
+    it('should post a DRAFT journal to an open period with no warnings', async () => {
+      journalRepo.findOne.mockResolvedValue({ ...draftJournal });
       journalRepo.save.mockResolvedValue({ ...draftJournal, status: JournalStatus.POSTED });
+      periodsService.validatePeriodForPosting.mockReturnValue({ allowed: true, warnings: [] });
 
       const result = await service.post(TENANT_ID, ENTITY_ID, 'journal-1', {}, USER_ID);
 
-      expect(result.status).toBe(JournalStatus.POSTED);
-      expect(periodsService.validatePeriodForPosting).toHaveBeenCalled();
+      expect(result.journal.status).toBe(JournalStatus.POSTED);
+      expect(result.warnings).toEqual([]);
+      expect(periodsService.validatePeriodForPosting).toHaveBeenCalledWith(mockPeriod, false);
     });
 
     it('should reject posting a journal that is already POSTED', async () => {
@@ -372,26 +374,48 @@ describe('JournalsService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('should reject posting to a locked period', async () => {
-      journalRepo.findOne.mockResolvedValue({
-        id: 'journal-1',
-        status: JournalStatus.DRAFT,
-        date: '2026-04-05',
-        journalNumber: 'JNL-000001',
-        tenantId: TENANT_ID,
-        entityId: ENTITY_ID,
-        lines: [
-          { debit: 100, credit: 0, accountId: ACCOUNT_RENT },
-          { debit: 0, credit: 100, accountId: ACCOUNT_BANK },
-        ],
-      });
+    it('should reject non-admin posting to a locked period (ForbiddenException)', async () => {
+      journalRepo.findOne.mockResolvedValue({ ...draftJournal });
 
-      periodsService.validatePeriodForPosting.mockImplementation(() => {
-        throw new BadRequestException('period is locked');
+      periodsService.validatePeriodForPosting.mockImplementation((_period: any, isAdmin: boolean) => {
+        if (!isAdmin) {
+          throw new ForbiddenException('Only administrators can post to a locked period');
+        }
+        return { allowed: true, warnings: [] };
       });
 
       await expect(
-        service.post(TENANT_ID, ENTITY_ID, 'journal-1', {}, USER_ID),
+        service.post(TENANT_ID, ENTITY_ID, 'journal-1', {}, USER_ID, false),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should allow admin to post to a locked period with a warning', async () => {
+      journalRepo.findOne.mockResolvedValue({ ...draftJournal });
+      journalRepo.save.mockResolvedValue({ ...draftJournal, status: JournalStatus.POSTED });
+
+      const lockedWarning = 'WARNING: Financial period April 2026 is LOCKED. This journal is being posted under admin override.';
+      periodsService.validatePeriodForPosting.mockReturnValue({
+        allowed: true,
+        warnings: [lockedWarning],
+      });
+
+      const result = await service.post(TENANT_ID, ENTITY_ID, 'journal-1', {}, USER_ID, true);
+
+      expect(result.journal.status).toBe(JournalStatus.POSTED);
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0]).toContain('LOCKED');
+      expect(periodsService.validatePeriodForPosting).toHaveBeenCalledWith(mockPeriod, true);
+    });
+
+    it('should reject posting to a closed period (even for admins)', async () => {
+      journalRepo.findOne.mockResolvedValue({ ...draftJournal });
+
+      periodsService.validatePeriodForPosting.mockImplementation(() => {
+        throw new BadRequestException('period is closed. Reopen the period before posting.');
+      });
+
+      await expect(
+        service.post(TENANT_ID, ENTITY_ID, 'journal-1', {}, USER_ID, true),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -416,6 +440,232 @@ describe('JournalsService', () => {
           ],
         }, USER_ID),
       ).rejects.toThrow('No financial period found');
+    });
+  });
+
+  // ================================================================
+  // JOURNAL AMENDMENT (admin-only)
+  // ================================================================
+
+  describe('Journal amendment', () => {
+    const postedJournal = {
+      id: 'journal-posted-1',
+      tenantId: TENANT_ID,
+      entityId: ENTITY_ID,
+      journalNumber: 'JNL-000010',
+      date: '2026-04-05',
+      status: JournalStatus.POSTED,
+      type: 'STANDARD',
+      description: 'Rent payment',
+      reference: 'RENT-APR',
+      currency: 'GBP',
+      exchangeRate: null,
+      totalDebit: 1000,
+      totalCredit: 1000,
+      isReversed: false,
+      isAmended: false,
+      lines: [
+        { debit: 1000, credit: 0, accountId: ACCOUNT_RENT, description: 'Rent' },
+        { debit: 0, credit: 1000, accountId: ACCOUNT_BANK, description: 'Bank' },
+      ],
+    };
+
+    const amendDto = {
+      reason: 'Wrong VAT rate applied',
+      lines: [
+        { accountId: ACCOUNT_RENT, debit: 833.33, credit: 0 },
+        { accountId: ACCOUNT_VAT, debit: 166.67, credit: 0 },
+        { accountId: ACCOUNT_BANK, debit: 0, credit: 1000 },
+      ],
+    };
+
+    it('should reject amendment by a non-admin user (ForbiddenException)', async () => {
+      await expect(
+        service.amend(TENANT_ID, ENTITY_ID, 'journal-posted-1', amendDto, USER_ID, false),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should amend a posted journal as admin — original goes AMENDED, new journal is POSTED', async () => {
+      // The mock DataSource.transaction needs to simulate both findOne and save
+      const mockTxRepo = {
+        findOne: jest.fn().mockResolvedValue({ ...postedJournal }),
+        create: jest.fn((data: any) => ({ ...data, id: 'amendment-1' })),
+        save: jest.fn((data: any) => Promise.resolve({ ...data, id: data.id || 'amendment-1' })),
+      };
+
+      const dataSource = {
+        transaction: jest.fn((fn: any) => fn({
+          getRepository: jest.fn().mockReturnValue(mockTxRepo),
+        })),
+      };
+
+      // Rebuild the service with this mock DataSource
+      const module = await Test.createTestingModule({
+        providers: [
+          JournalsService,
+          { provide: getRepositoryToken(Journal), useValue: journalRepo },
+          { provide: getRepositoryToken(JournalLine), useValue: createMockLineRepo() },
+          { provide: getRepositoryToken(Account), useValue: createMockAccountRepo() },
+          { provide: PeriodsService, useValue: periodsService },
+          { provide: DataSource, useValue: dataSource },
+        ],
+      }).compile();
+      const svc = module.get<JournalsService>(JournalsService);
+
+      periodsService.validatePeriodForPosting.mockReturnValue({ allowed: true, warnings: [] });
+
+      const result = await svc.amend(TENANT_ID, ENTITY_ID, 'journal-posted-1', amendDto, USER_ID, true);
+
+      // Original should be marked AMENDED
+      expect(result.original.status).toBe(JournalStatus.AMENDED);
+      expect(result.original.isAmended).toBe(true);
+
+      // Amendment journal should be POSTED with type AMENDMENT
+      expect(result.amendment.status).toBe(JournalStatus.POSTED);
+      expect(result.amendment.type).toBe('AMENDMENT');
+      expect(result.amendment.amendsJournalId).toBe('journal-posted-1');
+      expect(result.amendment.amendmentReason).toBe('Wrong VAT rate applied');
+
+      // Should include informational warnings
+      expect(result.warnings.length).toBeGreaterThan(0);
+      expect(result.warnings.some((w: string) => w.includes('AMENDED'))).toBe(true);
+    });
+
+    it('should reject amending a DRAFT journal', async () => {
+      const mockTxRepo = {
+        findOne: jest.fn().mockResolvedValue({
+          ...postedJournal,
+          status: JournalStatus.DRAFT,
+        }),
+        create: jest.fn(),
+        save: jest.fn(),
+      };
+
+      const dataSource = {
+        transaction: jest.fn((fn: any) => fn({
+          getRepository: jest.fn().mockReturnValue(mockTxRepo),
+        })),
+      };
+
+      const module = await Test.createTestingModule({
+        providers: [
+          JournalsService,
+          { provide: getRepositoryToken(Journal), useValue: journalRepo },
+          { provide: getRepositoryToken(JournalLine), useValue: createMockLineRepo() },
+          { provide: getRepositoryToken(Account), useValue: createMockAccountRepo() },
+          { provide: PeriodsService, useValue: periodsService },
+          { provide: DataSource, useValue: dataSource },
+        ],
+      }).compile();
+      const svc = module.get<JournalsService>(JournalsService);
+
+      await expect(
+        svc.amend(TENANT_ID, ENTITY_ID, 'journal-posted-1', amendDto, USER_ID, true),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should reject amending a journal that has already been amended', async () => {
+      const mockTxRepo = {
+        findOne: jest.fn().mockResolvedValue({
+          ...postedJournal,
+          isAmended: true,
+        }),
+        create: jest.fn(),
+        save: jest.fn(),
+      };
+
+      const dataSource = {
+        transaction: jest.fn((fn: any) => fn({
+          getRepository: jest.fn().mockReturnValue(mockTxRepo),
+        })),
+      };
+
+      const module = await Test.createTestingModule({
+        providers: [
+          JournalsService,
+          { provide: getRepositoryToken(Journal), useValue: journalRepo },
+          { provide: getRepositoryToken(JournalLine), useValue: createMockLineRepo() },
+          { provide: getRepositoryToken(Account), useValue: createMockAccountRepo() },
+          { provide: PeriodsService, useValue: periodsService },
+          { provide: DataSource, useValue: dataSource },
+        ],
+      }).compile();
+      const svc = module.get<JournalsService>(JournalsService);
+
+      await expect(
+        svc.amend(TENANT_ID, ENTITY_ID, 'journal-posted-1', amendDto, USER_ID, true),
+      ).rejects.toThrow('already been amended');
+    });
+
+    it('should reject amending a reversed journal', async () => {
+      const mockTxRepo = {
+        findOne: jest.fn().mockResolvedValue({
+          ...postedJournal,
+          isReversed: true,
+        }),
+        create: jest.fn(),
+        save: jest.fn(),
+      };
+
+      const dataSource = {
+        transaction: jest.fn((fn: any) => fn({
+          getRepository: jest.fn().mockReturnValue(mockTxRepo),
+        })),
+      };
+
+      const module = await Test.createTestingModule({
+        providers: [
+          JournalsService,
+          { provide: getRepositoryToken(Journal), useValue: journalRepo },
+          { provide: getRepositoryToken(JournalLine), useValue: createMockLineRepo() },
+          { provide: getRepositoryToken(Account), useValue: createMockAccountRepo() },
+          { provide: PeriodsService, useValue: periodsService },
+          { provide: DataSource, useValue: dataSource },
+        ],
+      }).compile();
+      const svc = module.get<JournalsService>(JournalsService);
+
+      await expect(
+        svc.amend(TENANT_ID, ENTITY_ID, 'journal-posted-1', amendDto, USER_ID, true),
+      ).rejects.toThrow('Reversed journals cannot be amended');
+    });
+
+    it('should validate balance on the amended lines', async () => {
+      const unbalancedDto = {
+        reason: 'Correction',
+        lines: [
+          { accountId: ACCOUNT_RENT, debit: 500, credit: 0 },
+          { accountId: ACCOUNT_BANK, debit: 0, credit: 499 },
+        ],
+      };
+
+      const mockTxRepo = {
+        findOne: jest.fn().mockResolvedValue({ ...postedJournal }),
+        create: jest.fn(),
+        save: jest.fn(),
+      };
+
+      const dataSource = {
+        transaction: jest.fn((fn: any) => fn({
+          getRepository: jest.fn().mockReturnValue(mockTxRepo),
+        })),
+      };
+
+      const module = await Test.createTestingModule({
+        providers: [
+          JournalsService,
+          { provide: getRepositoryToken(Journal), useValue: journalRepo },
+          { provide: getRepositoryToken(JournalLine), useValue: createMockLineRepo() },
+          { provide: getRepositoryToken(Account), useValue: createMockAccountRepo() },
+          { provide: PeriodsService, useValue: periodsService },
+          { provide: DataSource, useValue: dataSource },
+        ],
+      }).compile();
+      const svc = module.get<JournalsService>(JournalsService);
+
+      await expect(
+        svc.amend(TENANT_ID, ENTITY_ID, 'journal-posted-1', unbalancedDto, USER_ID, true),
+      ).rejects.toThrow('does not balance');
     });
   });
 });
