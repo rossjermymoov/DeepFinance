@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Client } from 'pg';
 
 // Core modules
 import { AccountsModule } from './modules/accounts/accounts.module';
@@ -32,8 +33,27 @@ import { HealthModule } from './health/health.module';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
+      useFactory: async (config: ConfigService) => {
         const databaseUrl = config.get<string>('DATABASE_URL');
+
+        // Ensure the 'core' schema exists before TypeORM tries to use it
+        const client = new Client(
+          databaseUrl
+            ? { connectionString: databaseUrl, ssl: config.get<string>('DB_SSL', 'false') === 'true' ? { rejectUnauthorized: false } : false }
+            : {
+                host: config.get<string>('DATABASE_HOST', 'localhost'),
+                port: config.get<number>('DATABASE_PORT', 5432),
+                user: config.get<string>('DATABASE_USER', 'deepfinance'),
+                password: config.get<string>('DATABASE_PASSWORD', 'deepfinance_dev'),
+                database: config.get<string>('DATABASE_NAME', 'deepfinance'),
+              },
+        );
+        try {
+          await client.connect();
+          await client.query('CREATE SCHEMA IF NOT EXISTS core');
+        } finally {
+          await client.end();
+        }
 
         const baseConfig = {
           type: 'postgres' as const,
