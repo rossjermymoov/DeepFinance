@@ -195,3 +195,43 @@ export interface TrialBalanceRow {
   totalCredit: number
   balance: number
 }
+
+export interface TaxRate {
+  id: string
+  name: string
+  code: string
+  rate: number
+  description: string | null
+  isDefault: boolean
+  isActive: boolean
+  effectiveFrom: string
+  effectiveTo: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BankTransaction {
+  id: string
+  bankAccountId: string
+  transactionDate: string
+  description: string
+  reference: string | null
+  amount: number
+  balance: number | null
+  type: 'CREDIT' | 'DEBIT'
+  reconciliationStatus: 'UNRECONCILED' | 'MATCHED' | 'RECONCILED' | 'EXCLUDED'
+  matchedJournalId: string | null
+  importSource: string | null
+  importBatchId: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ReconciliationSummary {
+  total: number
+  unreconciled: number
+  matched: number
+  reconciled: number
+  excluded: number
+  unreconciledAmount: number
+}

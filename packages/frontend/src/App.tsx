@@ -8,6 +8,8 @@ import Reports from './pages/Reports'
 import Contacts from './pages/Contacts'
 import Invoices from './pages/Invoices'
 import Bills from './pages/Bills'
+import TaxRates from './pages/TaxRates'
+import BankReconciliation from './pages/BankReconciliation'
 
 export default function App() {
   return (
@@ -21,6 +23,8 @@ export default function App() {
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/bills" element={<Bills />} />
+        <Route path="/tax-rates" element={<TaxRates />} />
+        <Route path="/bank" element={<BankReconciliation />} />
         <Route path="/settings" element={<Placeholder title="Settings" />} />
         <Route path="*" element={<Placeholder title="Page Not Found" />} />
       </Route>

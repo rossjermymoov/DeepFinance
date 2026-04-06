@@ -45,7 +45,13 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { label: 'Contacts', path: '/contacts', icon: Users },
       { label: 'Invoices', path: '/invoices', icon: Receipt },
       { label: 'Bills', path: '/bills', icon: CreditCard },
-      { label: 'Banking', path: '/banking', icon: Landmark, disabled: true },
+      { label: 'Bank Reconciliation', path: '/bank', icon: Landmark },
+    ],
+  },
+  {
+    title: 'Settings',
+    items: [
+      { label: 'Tax Rates', path: '/tax-rates', icon: Calculator },
     ],
   },
   {
