@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import {
   Plus,
   Search,
@@ -7,6 +7,12 @@ import {
   MoreHorizontal,
   ChevronDown,
   BookOpen,
+  FileSpreadsheet,
+  Pencil,
+  Lock,
+  Unlock,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react'
 import { Card, CardContent } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
@@ -22,6 +28,8 @@ import {
 } from '../components/ui/table'
 import { api, type Account } from '../lib/api'
 import { cn } from '../lib/utils'
+import CreateAccountModal from '../components/accounts/CreateAccountModal'
+import SeedTemplateModal from '../components/accounts/SeedTemplateModal'
 
 type SortField = 'code' | 'name' | 'type' | 'normalBalance'
 type SortDir = 'asc' | 'desc'
@@ -68,21 +76,52 @@ export default function ChartOfAccounts() {
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [showInactive, setShowInactive] = useState(false)
   const [showFilterDropdown, setShowFilterDropdown] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null)
+  const [actionMenuId, setActionMenuId] = useState<string | null>(null)
+  const [showSeedModal, setShowSeedModal] = useState(false)
+
+  const loadAccounts = useCallback(async () => {
+    try {
+      setLoading(true)
+      const data = await api.get<Account[]>('/accounts')
+      setAccounts(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load accounts')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    async function loadAccounts() {
-      try {
-        setLoading(true)
-        const data = await api.get<Account[]>('/accounts')
-        setAccounts(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load accounts')
-      } finally {
-        setLoading(false)
-      }
-    }
     loadAccounts()
-  }, [])
+  }, [loadAccounts])
+
+  function handleAccountCreated(_account: Account) {
+    setShowCreateModal(false)
+    setEditingAccount(null)
+    loadAccounts()
+  }
+
+  async function handleToggleActive(account: Account) {
+    try {
+      await api.patch(`/accounts/${account.id}`, { isActive: !account.isActive })
+      loadAccounts()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update account')
+    }
+    setActionMenuId(null)
+  }
+
+  async function handleToggleLock(account: Account) {
+    try {
+      await api.patch(`/accounts/${account.id}`, { isLocked: !account.isLocked })
+      loadAccounts()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update account')
+    }
+    setActionMenuId(null)
+  }
 
   const accountTypes = useMemo(
     () => [...new Set(accounts.map((a) => a.type))].sort(),
@@ -173,10 +212,18 @@ export default function ChartOfAccounts() {
             Manage your organisation's account structure
           </p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Account
-        </Button>
+        <div className="flex items-center gap-2">
+          {accounts.length === 0 && (
+            <Button variant="outline" onClick={() => setShowSeedModal(true)}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Load UK Template
+            </Button>
+          )}
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Account
+          </Button>
+        </div>
       </div>
 
       {/* Error */}
@@ -299,9 +346,17 @@ export default function ChartOfAccounts() {
               {filteredAccounts.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                    {accounts.length === 0
-                      ? 'No accounts yet. Add your first account to get started.'
-                      : 'No accounts match your filters.'}
+                    {accounts.length === 0 ? (
+                      <div className="space-y-3">
+                        <p>No accounts yet. Get started by loading a UK template or adding accounts manually.</p>
+                        <Button variant="outline" onClick={() => setShowSeedModal(true)}>
+                          <FileSpreadsheet className="h-4 w-4 mr-2" />
+                          Load UK Template
+                        </Button>
+                      </div>
+                    ) : (
+                      'No accounts match your filters.'
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -345,16 +400,90 @@ export default function ChartOfAccounts() {
                       {account.currency}
                     </TableCell>
                     <TableCell>
-                      {account.isActive ? (
-                        <Badge variant="success">Active</Badge>
-                      ) : (
-                        <Badge variant="error">Inactive</Badge>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {account.isActive ? (
+                          <Badge variant="success">Active</Badge>
+                        ) : (
+                          <Badge variant="error">Archived</Badge>
+                        )}
+                        {account.isLocked && (
+                          <span title="Locked">
+                            <Lock className="h-3.5 w-3.5 text-amber-400" />
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                      <div className="relative">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setActionMenuId(actionMenuId === account.id ? null : account.id)
+                          }}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                        {actionMenuId === account.id && (
+                          <div className="absolute right-0 top-full mt-1 z-20 w-48 bg-card border border-border rounded-md shadow-lg py-1">
+                            <button
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors flex items-center gap-2"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditingAccount(account)
+                                setActionMenuId(null)
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Edit
+                            </button>
+                            {!account.isSystemAccount && (
+                              <>
+                                <button
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors flex items-center gap-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleToggleLock(account)
+                                  }}
+                                >
+                                  {account.isLocked ? (
+                                    <>
+                                      <Unlock className="h-3.5 w-3.5" />
+                                      Unlock
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Lock className="h-3.5 w-3.5" />
+                                      Lock
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-secondary transition-colors flex items-center gap-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleToggleActive(account)
+                                  }}
+                                >
+                                  {account.isActive ? (
+                                    <>
+                                      <Archive className="h-3.5 w-3.5 text-orange-400" />
+                                      <span className="text-orange-400">Archive</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ArchiveRestore className="h-3.5 w-3.5 text-green-400" />
+                                      <span className="text-green-400">Restore</span>
+                                    </>
+                                  )}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -363,6 +492,30 @@ export default function ChartOfAccounts() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Seed template modal */}
+      {showSeedModal && (
+        <SeedTemplateModal
+          onClose={() => setShowSeedModal(false)}
+          onSeeded={() => {
+            setShowSeedModal(false)
+            loadAccounts()
+          }}
+        />
+      )}
+
+      {/* Create / Edit modal */}
+      {(showCreateModal || editingAccount) && (
+        <CreateAccountModal
+          accounts={accounts}
+          editAccount={editingAccount}
+          onClose={() => {
+            setShowCreateModal(false)
+            setEditingAccount(null)
+          }}
+          onCreated={handleAccountCreated}
+        />
+      )}
     </div>
   )
 }

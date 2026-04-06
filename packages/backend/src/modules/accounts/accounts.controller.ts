@@ -6,11 +6,13 @@ import {
   Param,
   Body,
   Headers,
+  Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { AccountsService } from './accounts.service';
 import { CreateAccountDto, UpdateAccountDto } from './accounts.dto';
+import { UK_CHART_TEMPLATES } from './uk-chart-templates';
 
 @ApiTags('accounts')
 @ApiBearerAuth()
@@ -27,6 +29,62 @@ export class AccountsController {
     @Headers('x-entity-id') entityId: string,
   ) {
     return this.accountsService.findAll(tenantId, entityId);
+  }
+
+  @Get('templates')
+  @ApiOperation({ summary: 'List available chart of accounts templates' })
+  async getTemplates() {
+    return Object.entries(UK_CHART_TEMPLATES).map(([key, val]) => ({
+      id: key,
+      label: val.label,
+      accountCount: val.accounts.length,
+    }));
+  }
+
+  @Post('seed/:templateId')
+  @ApiOperation({ summary: 'Seed chart of accounts from a UK template' })
+  async seedFromTemplate(
+    @Headers('x-tenant-id') tenantId: string,
+    @Headers('x-entity-id') entityId: string,
+    @Param('templateId') templateId: string,
+  ) {
+    const template = UK_CHART_TEMPLATES[templateId];
+    if (!template) {
+      return { error: `Template '${templateId}' not found. Available: ${Object.keys(UK_CHART_TEMPLATES).join(', ')}` };
+    }
+
+    const userId = '00000000-0000-0000-0000-000000000000';
+    const results: { created: number; skipped: number; errors: string[] } = {
+      created: 0,
+      skipped: 0,
+      errors: [],
+    };
+
+    for (const account of template.accounts) {
+      try {
+        // Check if account code already exists
+        const existing = await this.accountsService.findByCode(tenantId, entityId, account.code);
+        if (existing) {
+          results.skipped++;
+          continue;
+        }
+
+        await this.accountsService.create(tenantId, entityId, {
+          code: account.code,
+          name: account.name,
+          accountType: account.accountType,
+          accountSubType: account.accountSubType,
+          description: account.description,
+          isBankAccount: account.isBankAccount,
+          currency: 'GBP',
+        }, userId);
+        results.created++;
+      } catch (err) {
+        results.errors.push(`${account.code}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    return results;
   }
 
   @Get('trial-balance')

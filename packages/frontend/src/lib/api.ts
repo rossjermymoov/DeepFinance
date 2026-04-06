@@ -40,6 +40,7 @@ export interface Account {
   subType: string | null
   description: string | null
   isActive: boolean
+  isLocked: boolean
   isSystemAccount: boolean
   parentAccountId: string | null
   normalBalance: 'DEBIT' | 'CREDIT'
