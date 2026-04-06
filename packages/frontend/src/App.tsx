@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import AppLayout from './components/layout/AppLayout'
 import Dashboard from './pages/Dashboard'
 import ChartOfAccounts from './pages/ChartOfAccounts'
+import JournalEntries from './pages/JournalEntries'
 
 export default function App() {
   return (
@@ -9,7 +10,7 @@ export default function App() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/accounts" element={<ChartOfAccounts />} />
-        <Route path="/journals" element={<Placeholder title="Journal Entries" />} />
+        <Route path="/journals" element={<JournalEntries />} />
         <Route path="/periods" element={<Placeholder title="Financial Periods" />} />
         <Route path="/settings" element={<Placeholder title="Settings" />} />
         <Route path="*" element={<Placeholder title="Page Not Found" />} />
