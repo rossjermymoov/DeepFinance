@@ -28,22 +28,43 @@ import { HealthModule } from './health/health.module';
     }),
 
     // Database
+    // Supports DATABASE_URL (Railway/production) or individual vars (local dev)
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get('DATABASE_HOST', 'localhost'),
-        port: config.get<number>('DATABASE_PORT', 5432),
-        username: config.get('DATABASE_USER', 'deepfinance'),
-        password: config.get('DATABASE_PASSWORD', 'deepfinance_dev'),
-        database: config.get('DATABASE_NAME', 'deepfinance'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
-        synchronize: false,        // Never auto-sync in production
-        logging: config.get('NODE_ENV') === 'development',
-        schema: 'core',
-      }),
+      useFactory: (config: ConfigService) => {
+        const databaseUrl = config.get<string>('DATABASE_URL');
+
+        const baseConfig = {
+          type: 'postgres' as const,
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
+          synchronize: config.get<string>('DB_SYNC', 'false') === 'true',
+          logging: config.get<string>('NODE_ENV') === 'development',
+          schema: 'core',
+        };
+
+        if (databaseUrl) {
+          // Railway / production — single connection string
+          return {
+            ...baseConfig,
+            url: databaseUrl,
+            ssl: config.get<string>('DB_SSL', 'false') === 'true'
+              ? { rejectUnauthorized: false }
+              : false,
+          };
+        }
+
+        // Local dev — individual variables
+        return {
+          ...baseConfig,
+          host: config.get<string>('DATABASE_HOST', 'localhost'),
+          port: config.get<number>('DATABASE_PORT', 5432),
+          username: config.get<string>('DATABASE_USER', 'deepfinance'),
+          password: config.get<string>('DATABASE_PASSWORD', 'deepfinance_dev'),
+          database: config.get<string>('DATABASE_NAME', 'deepfinance'),
+        };
+      },
     }),
 
     // Infrastructure
