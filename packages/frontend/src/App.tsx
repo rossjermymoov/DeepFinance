@@ -12,6 +12,9 @@ import TaxRates from './pages/TaxRates'
 import BankReconciliation from './pages/BankReconciliation'
 import VatReturns from './pages/VatReturns'
 import VatSettings from './pages/VatSettings'
+import Employees from './pages/Employees'
+import PayRuns from './pages/PayRuns'
+import PayrollSettings from './pages/PayrollSettings'
 
 export default function App() {
   return (
@@ -29,6 +32,9 @@ export default function App() {
         <Route path="/bank" element={<BankReconciliation />} />
         <Route path="/vat" element={<VatReturns />} />
         <Route path="/vat/settings" element={<VatSettings />} />
+        <Route path="/payroll/employees" element={<Employees />} />
+        <Route path="/payroll/pay-runs" element={<PayRuns />} />
+        <Route path="/payroll/settings" element={<PayrollSettings />} />
         <Route path="/settings" element={<Placeholder title="Settings" />} />
         <Route path="*" element={<Placeholder title="Page Not Found" />} />
       </Route>

@@ -13,6 +13,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  Banknote,
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useState } from 'react'
@@ -46,6 +47,14 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { label: 'Invoices', path: '/invoices', icon: Receipt },
       { label: 'Bills', path: '/bills', icon: CreditCard },
       { label: 'Bank Reconciliation', path: '/bank', icon: Landmark },
+    ],
+  },
+  {
+    title: 'Payroll',
+    items: [
+      { label: 'Employees', path: '/payroll/employees', icon: Users },
+      { label: 'Pay Runs', path: '/payroll/pay-runs', icon: Banknote },
+      { label: 'Payroll Settings', path: '/payroll/settings', icon: Settings },
     ],
   },
   {

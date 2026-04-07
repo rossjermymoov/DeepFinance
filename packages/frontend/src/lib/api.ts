@@ -287,3 +287,126 @@ export interface VatObligation {
   receivedDate: string | null
   vatReturnId: string | null
 }
+
+// Payroll Types
+export interface Employee {
+  id: string
+  employeeNumber: string
+  title: string | null
+  firstName: string
+  middleName: string | null
+  lastName: string
+  dateOfBirth: string
+  gender: 'MALE' | 'FEMALE'
+  niNumber: string | null
+  taxCode: string
+  niCategory: string
+  payFrequency: 'WEEKLY' | 'FORTNIGHTLY' | 'FOUR_WEEKLY' | 'MONTHLY'
+  basicPayRate: number
+  payMethod: 'SALARY' | 'HOURLY'
+  bankSortCode: string | null
+  bankAccountNumber: string | null
+  bankAccountName: string | null
+  startDate: string
+  leaveDate: string | null
+  isDirector: boolean
+  studentLoanPlan: 'NONE' | 'PLAN_1' | 'PLAN_2' | 'PLAN_4' | 'POSTGRAD'
+  pensionOptOut: boolean
+  pensionContributionPct: number
+  employerPensionPct: number
+  addressLine1: string | null
+  addressLine2: string | null
+  city: string | null
+  county: string | null
+  postcode: string | null
+  email: string | null
+  phone: string | null
+  isActive: boolean
+  cumulativeGrossPay: number
+  cumulativeTaxPaid: number
+  cumulativeNiEmployee: number
+  cumulativeNiEmployer: number
+  previousEmploymentPay: number
+  previousEmploymentTax: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PayRun {
+  id: string
+  payRunNumber: string
+  payFrequency: 'WEEKLY' | 'FORTNIGHTLY' | 'FOUR_WEEKLY' | 'MONTHLY'
+  taxPeriod: number
+  taxYear: string
+  periodStart: string
+  periodEnd: string
+  paymentDate: string
+  status: 'DRAFT' | 'CALCULATED' | 'REVIEWED' | 'SUBMITTED' | 'COMPLETED'
+  totalGrossPay: number
+  totalTaxDeducted: number
+  totalNiEmployee: number
+  totalNiEmployer: number
+  totalStudentLoan: number
+  totalPensionEmployee: number
+  totalPensionEmployer: number
+  totalNetPay: number
+  employeeCount: number
+  hmrcSubmissionId: string | null
+  submittedAt: string | null
+  notes: string | null
+  createdAt: string
+}
+
+export interface Payslip {
+  id: string
+  payRunId: string
+  employeeId: string
+  employee?: Employee
+  basicPay: number
+  overtimePay: number
+  bonusPay: number
+  commissionPay: number
+  grossPay: number
+  taxableGross: number
+  taxDeducted: number
+  niEmployeeContribution: number
+  niEmployerContribution: number
+  studentLoanDeduction: number
+  pensionEmployeeContribution: number
+  pensionEmployerContribution: number
+  otherDeductions: number
+  otherAdditions: number
+  netPay: number
+  taxCode: string
+  niCategory: string
+  niablePay: number
+  hoursWorked: number | null
+  cumulativeGrossPay: number
+  cumulativeTaxPaid: number
+  cumulativeNiEmployee: number
+  payMethod: string
+  notes: string | null
+}
+
+export interface PayrollSettings {
+  id: string
+  employerPayeRef: string | null
+  accountsOfficeRef: string | null
+  employerName: string | null
+  taxYear: string
+  hmrcAccessToken: string | null
+  hmrcTokenExpiresAt: string | null
+  smallEmployerRelief: boolean
+  employmentAllowanceClaimable: boolean
+  employmentAllowanceClaimed: number
+  lastRtiSubmissionAt: string | null
+}
+
+export interface PayrollSummary {
+  totalEmployees: number
+  activeEmployees: number
+  currentPayRun: PayRun | null
+  ytdGrossPay: number
+  ytdTaxDeducted: number
+  ytdNiTotal: number
+}
