@@ -482,7 +482,6 @@ export class PayrollService {
 
     return this.payslipRepo.find({
       where: { payRunId, tenantId, entityId },
-      relations: ['employee'],
       order: { createdAt: 'ASC' },
     });
   }
@@ -497,7 +496,6 @@ export class PayrollService {
 
     return this.payslipRepo.find({
       where: { employeeId, tenantId, entityId },
-      relations: ['payRun'],
       order: { createdAt: 'DESC' },
     });
   }

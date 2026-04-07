@@ -1,26 +1,16 @@
-import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Entity, Column, Index } from 'typeorm';
 import { EntityScopedBase } from '../../common/base.entity';
-import { PayRun } from './pay-run.entity';
-import { Employee } from './employee.entity';
 
 @Entity('payslips', { schema: 'core' })
 @Index(['tenantId', 'entityId', 'payRunId', 'employeeId'], { unique: true })
 @Index(['tenantId', 'entityId', 'payRunId'])
 @Index(['tenantId', 'entityId', 'employeeId'])
 export class Payslip extends EntityScopedBase {
-  @Column({ type: 'uuid' })
+  @Column({ name: 'pay_run_id', type: 'uuid' })
   payRunId: string;
 
-  @ManyToOne(() => PayRun)
-  @JoinColumn({ name: 'pay_run_id' })
-  payRun: PayRun;
-
-  @Column({ type: 'uuid' })
+  @Column({ name: 'employee_id', type: 'uuid' })
   employeeId: string;
-
-  @ManyToOne(() => Employee)
-  @JoinColumn({ name: 'employee_id' })
-  employee: Employee;
 
   @Column({ type: 'numeric', precision: 15, scale: 2 })
   basicPay: number;

@@ -57,7 +57,7 @@ export class Employee extends EntityScopedBase {
   @Column({ length: 50 })
   employeeNumber: string;
 
-  @Column({ type: 'enum', enum: EmployeeTitle, nullable: true })
+  @Column({ type: 'varchar', length: 10, nullable: true })
   title: EmployeeTitle;
 
   @Column({ length: 50 })
@@ -72,7 +72,7 @@ export class Employee extends EntityScopedBase {
   @Column({ type: 'date' })
   dateOfBirth: Date;
 
-  @Column({ type: 'enum', enum: EmployeeGender })
+  @Column({ type: 'varchar', length: 10 })
   gender: EmployeeGender;
 
   @Column({ length: 20, nullable: true })
@@ -81,16 +81,16 @@ export class Employee extends EntityScopedBase {
   @Column({ length: 10 })
   taxCode: string;
 
-  @Column({ type: 'enum', enum: NiCategory, default: NiCategory.A })
+  @Column({ type: 'varchar', length: 5, default: NiCategory.A })
   niCategory: NiCategory;
 
-  @Column({ type: 'enum', enum: PayFrequency })
+  @Column({ type: 'varchar', length: 20 })
   payFrequency: PayFrequency;
 
   @Column({ type: 'numeric', precision: 15, scale: 2 })
   basicPayRate: number;
 
-  @Column({ type: 'enum', enum: PayMethod })
+  @Column({ type: 'varchar', length: 10 })
   payMethod: PayMethod;
 
   @Column({ length: 10, nullable: true })
@@ -111,7 +111,7 @@ export class Employee extends EntityScopedBase {
   @Column({ default: false })
   isDirector: boolean;
 
-  @Column({ type: 'enum', enum: StudentLoanPlan, default: StudentLoanPlan.NONE })
+  @Column({ type: 'varchar', length: 20, default: StudentLoanPlan.NONE })
   studentLoanPlan: StudentLoanPlan;
 
   @Column({ default: false })

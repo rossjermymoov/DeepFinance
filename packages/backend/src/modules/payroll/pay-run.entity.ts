@@ -12,14 +12,14 @@ export enum PayRunStatus {
 
 @Entity('pay_runs', { schema: 'core' })
 @Index(['tenantId', 'entityId', 'payRunNumber'], { unique: true })
-@Index(['tenantId', 'entityId', 'taxYear', 'taxPeriod'], { unique: true })
+@Index(['tenantId', 'entityId', 'taxYear', 'taxPeriod', 'payFrequency'], { unique: true })
 @Index(['tenantId', 'entityId', 'status'])
 @Index(['tenantId', 'entityId', 'periodStart', 'periodEnd'])
 export class PayRun extends EntityScopedBase {
   @Column({ length: 50 })
   payRunNumber: string;
 
-  @Column({ type: 'enum', enum: PayFrequency })
+  @Column({ type: 'varchar', length: 20 })
   payFrequency: PayFrequency;
 
   @Column({ type: 'integer' })
@@ -37,7 +37,7 @@ export class PayRun extends EntityScopedBase {
   @Column({ type: 'date' })
   paymentDate: Date;
 
-  @Column({ type: 'enum', enum: PayRunStatus, default: PayRunStatus.DRAFT })
+  @Column({ type: 'varchar', length: 20, default: PayRunStatus.DRAFT })
   status: PayRunStatus;
 
   @Column({ type: 'numeric', precision: 15, scale: 2, default: 0 })
