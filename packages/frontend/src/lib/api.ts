@@ -235,3 +235,55 @@ export interface ReconciliationSummary {
   excluded: number
   unreconciledAmount: number
 }
+
+// VAT Types
+export interface VatSettings {
+  id: string
+  vatNumber: string | null
+  vatScheme: 'STANDARD' | 'FLAT_RATE' | 'CASH_ACCOUNTING'
+  flatRatePercentage: number | null
+  flatRateCategory: string | null
+  returnFrequency: 'MONTHLY' | 'QUARTERLY' | 'ANNUAL'
+  staggerGroup: number | null
+  isRegistered: boolean
+  registrationDate: string | null
+  deregistrationDate: string | null
+  hmrcClientId: string | null
+  hmrcAccessToken: string | null  // just presence, not the actual value
+  hmrcTokenExpiresAt: string | null
+  lastSyncedAt: string | null
+}
+
+export interface VatReturn {
+  id: string
+  periodStart: string
+  periodEnd: string
+  dueDate: string
+  status: 'DRAFT' | 'CALCULATED' | 'REVIEWED' | 'SUBMITTED' | 'ACCEPTED' | 'REJECTED' | 'AMENDED'
+  vatSchemeUsed: string
+  box1: number  // pence
+  box2: number
+  box3: number
+  box4: number
+  box5: number
+  box6: number
+  box7: number
+  box8: number
+  box9: number
+  calculatedAt: string | null
+  submittedAt: string | null
+  hmrcReceiptId: string | null
+  notes: string | null
+  createdAt: string
+}
+
+export interface VatObligation {
+  id: string
+  periodStart: string
+  periodEnd: string
+  dueDate: string
+  status: 'OPEN' | 'FULFILLED'
+  hmrcPeriodKey: string | null
+  receivedDate: string | null
+  vatReturnId: string | null
+}

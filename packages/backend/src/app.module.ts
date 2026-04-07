@@ -11,6 +11,7 @@ import { InvoicesModule } from './modules/invoices/invoices.module';
 import { BillsModule } from './modules/bills/bills.module';
 import { BankModule } from './modules/bank/bank.module';
 import { TaxModule } from './modules/tax/tax.module';
+import { VatModule } from './modules/vat/vat.module';
 import { EntitiesModule } from './modules/entities/entities.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { PeriodsModule } from './modules/periods/periods.module';
@@ -101,6 +102,7 @@ import { HealthModule } from './health/health.module';
     BillsModule,
     BankModule,
     TaxModule,
+    VatModule,
     PeriodsModule,
     ReportsModule,
   ],

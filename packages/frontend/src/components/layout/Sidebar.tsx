@@ -52,12 +52,13 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: 'Settings',
     items: [
       { label: 'Tax Rates', path: '/tax-rates', icon: Calculator },
+      { label: 'VAT Settings', path: '/vat/settings', icon: Settings },
     ],
   },
   {
     title: 'Compliance',
     items: [
-      { label: 'VAT Returns', path: '/vat', icon: Calculator, disabled: true },
+      { label: 'VAT Returns', path: '/vat', icon: Calculator },
       { label: 'Reports', path: '/reports', icon: BarChart3 },
     ],
   },
